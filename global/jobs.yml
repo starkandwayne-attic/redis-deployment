@@ -1,0 +1,63 @@
+---
+director_uuid: (( param "Please provide the UUID of your target BOSH director in the site/environment director.yml file" ))
+
+name: (( param "Please define the deployment name in the environment templates" ))
+
+compilation: (( param "Specify the compilation node configurations" ))
+
+disk_pools: (( param "Specify the disk pools for your deployment" ))
+
+resource_pools: (( param "Specify the resource pools for your deployment" ))
+
+networks: (( param "Specify the networks for your deployment" ))
+
+update:
+  canaries: 1
+  max_in_flight: 1
+  canary_watch_time: 1000-60000
+  update_watch_time: 1000-60000
+  serial: true
+
+jobs:
+- name: broker
+  instances: 1
+  networks: (( param "Environment must define jobs.cf-redis-broker.networks" ))
+  resource_pool: (( param "Define the cf-redis-broker resource pool" ))
+  templates:
+  - { name: cf-redis-broker, release: cf-redis }
+  - { name: syslog-configurator, release: cf-redis }
+  - { name: route_registrar, release: routing }
+  - { name: toolbelt, release: toolbelt}
+  - { name: toolbelt-quick, release: toolbelt }
+  - { name: nxlog, release: nxlog }
+  - { name: dbolo, release: bolo }
+    
+- name: broker-deregistrar
+  instances: 1
+  lifecycle: errand 
+  networks: (( param "Environment must define jobs.broker-deregistrar.networks" ))
+  resource_pool: (( param "Define the broker-deregistrar resource pool" ))
+  templates:
+  - { name: broker-deregistrar, release: cf-redis }
+  - { name: toolbelt, release: toolbelt}
+  - { name: toolbelt-quick, release: toolbelt }
+
+- name: broker-registrar
+  instances: 1
+  lifecycle: errand 
+  networks: (( param "Environment must define jobs.broker-registrar.networks" ))
+  resource_pool: (( param "Define the broker-registrar resource pool" ))
+  templates:
+  - { name: broker-registrar, release: cf-redis }
+  - { name: toolbelt, release: toolbelt}
+  - { name: toolbelt-quick, release: toolbelt }
+
+- name: smoke-tests
+  instances: 1
+  lifecycle: errand
+  networks: (( param "Environment must define jobs.smoke-tests networks" ))
+  resource_pool: (( param "Define the smoke-tests resource pool" ))
+  templates:
+  - { name: smoke-tests, release: cf-redis }
+  - { name: toolbelt, release: toolbelt}
+  - { name: toolbelt-quick, release: toolbelt }

@@ -1,0 +1,291 @@
+---
+meta:
+  azs:
+    z1: (( param "What availability zone should the *_z1 vms be placed in?" ))
+    z2: (( param "What availability zone should the *_z2 vms be placed in?" ))
+    z3: (( param "What availability zone should the *_z3 vms be placed in?" ))
+
+  subnets: (( param "Specify sebnets for each Az" ))
+  dns: (( param "Specify the DNS for your subnets" ))
+  security_groups: (( param "Specify the security groups" ))
+
+  management:
+    shield:
+      agent:
+        autoprovision: (( param "What is the shield autoprovision url?" )) 
+      daemon:
+        domain: (( param "What is the shield daemon domain?" )) 
+    nxlog:
+      tcpoutput:
+        host: (( param "What is the host?" )) 
+        port: (( param "What is the nxlog?" ))
+        protocol: tcp
+    bolo:
+      submission:
+        address: (( param "What is the address for monitoring submission?" ))
+      collectors: (( param "What is the collectors setting?" ))
+
+  cell_ips: (( grab jobs.cell_z1.networks.redis_z1.static_ips jobs.cell_z2.networks.redis_z2.static_ips jobs.cell_z3.networks.redis_z3.static_ips )) 
+
+  route_registrar:
+    routes:
+      - name: cf-redis-broker
+        health_check:
+          name: cf-redis-broker
+          script_path: /var/vcap/jobs/cf-redis-broker/bin/health_check.sh
+        port: 80
+        registration_interval: 10s
+        tags:
+          component: redis-broker
+          env: (( param "Specify the Environment" )) 
+        uris: (( grab jobs.broker.networks.redis_z1.static_ips )) 
+
+  nats:
+    machines: (( param "List the nats machines" ))
+    port: (( param "Which port the nats are listening on?" ))
+    user: (( param "What is the user name for nats?" )) 
+    password: (( param "What is the password for nats user?" )) 
+
+  cf:
+    api_url: (( param "Specify the cf api url" )) 
+    apps_domain: (( param "Specify apps' domain in your CF" )) 
+    system_domain: (( param "Specify system domain in your CF" ))  
+    admin_username: (( param "What is the admin user name for your CF?" )) 
+    admin_password: (( param "What is your admin password for your CF?" )) 
+
+  templates:
+  - { name: dedicated-node, release: cf-redis }
+  - { name: syslog-configurator, release: cf-redis }
+  - { name: toolbelt, release: toolbelt}
+  - { name: toolbelt-quick, release: toolbelt }
+  - { name: dbolo, release: bolo }
+  - { name: shield-agent, release: shield }
+
+properties:
+  cf:
+    .: (( inject meta.cf ))
+
+  broker:
+    host: (( grab jobs.broker.networks.redis_z1.static_ips[0] )) # cf-redis-broker.service.cf.internal
+    name: cf-redis-broker
+    username: (( vault meta.vault_prefix "/servicebroker:username" ))
+    password: (( vault meta.vault_prefix "/servicebroker:password" ))
+    protocol: http
+
+  redis:
+    agent:
+      backend_port: 54321
+    bg_save_command: somerandomstring 
+
+    broker:
+      auth:
+        username: (( vault meta.vault_prefix "/servicebroker:username" ))
+        password: (( vault meta.vault_prefix "/servicebroker:password" ))
+      backend_host: (( grab jobs.broker.networks.redis_z1.static_ips[0] ))
+      backend_port: 12345
+      dedicated_nodes: (( grab meta.cell_ips ))
+      enable_service_access: true
+      host: (( grab jobs.broker.networks.redis_z1.static_ips[0] )) 
+      name: cf-redis-broker
+      network: redis_z1
+      route_name: cf-redis-broker
+      service_id: (( param "Specify service_id" )) 
+      service_name: redis
+      shared_vm_plan_id: (( param "Specify shared vm plan id" )) 
+      dedicated_vm_plan_id: (( param "Specify dedicated vm plan id" )) 
+      service_instance_limit: 100
+      subdomain: cf-redis-broker
+
+    config_command: configalias
+    maxmemory: 3mb
+    save_command: somerandomstring 
+
+  syslog_aggregator:
+    address: (( grab meta.management.nxlog.tcpoutput.host ))
+    port: (( grab meta.management.nxlog.tcpoutput.port ))
+    transport: (( grab meta.management.nxlog.tcpoutput.protocol ))
+
+compilation:
+  network: redis_z1
+  reuse_compilation_vms: true
+  workers: 2
+
+  cloud_properties:
+    instance_type: c4.large
+    ephemeral_disk:
+      size: 20_480
+      type: gp2
+    availability_zone: (( grab meta.azs.z1 ))
+
+# Note: This will migrate to Cloud Config
+resource_pools:
+- name: medium_z1 
+  stemcell: (( grab meta.stemcell ))
+  cloud_properties:
+    instance_type: t2.medium
+    ephemeral_disk:
+      size: 4096
+      type: gp2
+    availability_zone: (( grab meta.azs.z1 ))
+
+- name: medium_z2 
+  stemcell: (( grab meta.stemcell ))
+  cloud_properties:
+    instance_type: t2.medium
+    ephemeral_disk:
+      size: 4096
+      type: gp2
+    availability_zone: (( grab meta.azs.z2 ))
+
+- name: medium_z3 
+  stemcell: (( grab meta.stemcell ))
+  cloud_properties:
+    instance_type: t2.medium
+    ephemeral_disk:
+      size: 4096
+      type: gp2
+    availability_zone: (( grab meta.azs.z3 ))
+
+# Note: This will migrate to Cloud Config
+disk_pools:
+- name: small
+  disk_size: 10_240
+  cloud_properties:
+    type: standard
+
+- name: medium
+  disk_size: 40_960
+  cloud_properties:
+    type: standard
+
+- name: large
+  disk_size: 102_400
+  cloud_properties:
+    type: standard
+
+- name: xlarge
+  disk_size: 204_800
+  cloud_properties:
+    type: standard
+
+- name: small_ssd
+  disk_size: 10_240
+  cloud_properties:
+    type: gp2
+
+- name: medium_ssd
+  disk_size: 40_960
+  cloud_properties:
+    type: gp2
+
+- name: large_ssd
+  disk_size: 102_400
+  cloud_properties:
+    type: gp2
+
+- name: xlarge_ssd
+  disk_size: 204_800
+  cloud_properties:
+    type: gp2
+
+# This will migrate to Cloud config 
+networks:
+
+- name: redis_z1
+  subnets:
+  - cloud_properties:
+      security_groups: (( grab meta.security_groups ))
+      subnet: (( grab meta.subnets.z1 ))
+    dns: (( grab meta.dns ))
+    gateway: (( param "Enter the Gateway for this subnet" )) 
+    reserved: (( param "Enter the reserved IP ranges for this subnet" )) 
+    range: (( param "Enter the CIDR address for this subnet" )) 
+    static: (( param "Enter the static IP ranges for this subnet" )) 
+
+- name: redis_z2
+  subnets:
+  - cloud_properties:
+      security_groups: (( grab meta.security_groups ))
+      subnet: (( grab meta.subnets.z2 ))
+    dns: (( grab meta.dns ))
+    gateway: (( param "Enter the Gateway for this subnet" )) 
+    reserved: (( param "Enter the reserved IP ranges for this subnet" )) 
+    range: (( param "Enter the CIDR address for this subnet" )) 
+    static: (( param "Enter the static IP ranges for this subnet" )) 
+
+- name: redis_z3
+  subnets:
+  - cloud_properties:
+      security_groups: (( grab meta.security_groups ))
+      subnet: (( grab meta.subnets.z3 ))
+    dns: (( grab meta.dns ))
+    gateway: (( param "Enter the Gateway for this subnet" )) 
+    reserved: (( param "Enter the reserved IP ranges for this subnet" )) 
+    range: (( param "Enter the CIDR address for this subnet" )) 
+    static: (( param "Enter the static IP ranges for this subnet" )) 
+
+jobs:
+- name: broker
+  persistent_disk_pool: small
+  resource_pool: medium_z1
+  networks:
+  - name: redis_z1
+    static_ips: (( static_ips(0) ))
+  properties:
+    .: (( inject meta.management ))
+    nats:
+      nats: (( inject meta.nats ))
+    route_registrar: 
+      .: (( inject meta.route_registrar ))
+
+- name: cell_z1
+  instances: 1
+  persistent_disk_pool: medium
+  resource_pool: medium_z1
+  networks:
+    - name: redis_z1
+      static_ips: (( static_ips(1,2,3,4,5,6,7,8) )) # 0 is for the broker
+  templates: (( grab meta.templates ))
+  properties:
+    .: (( inject meta.management ))
+
+- name: cell_z2
+  instances: 1
+  persistent_disk_pool: medium
+  resource_pool: medium_z2
+  networks:
+    - name: redis_z2
+      static_ips: (( static_ips(0,1,2,3,4,5,6,7,8) ))
+  templates: (( grab meta.templates ))
+  properties:
+    .: (( inject meta.management ))
+
+- name: cell_z3
+  instances: 1
+  persistent_disk_pool: medium
+  resource_pool: medium_z3
+  networks:
+    - name: redis_z3
+      static_ips: (( static_ips(0,1,2,3,4,5,6,7,8) ))
+  templates: (( grab meta.templates ))
+  properties:
+    .: (( inject meta.management ))
+
+- name: broker-deregistrar
+  resource_pool: medium_z1
+  networks:
+    - name: redis_z1
+  properties:
+    .: (( inject properties.broker ))
+
+- name: broker-registrar
+  resource_pool: medium_z1
+  networks:
+    - name: redis_z1
+  properties:
+    .: (( inject properties.broker ))
+
+- name: smoke-tests
+  resource_pool: medium_z1
+  networks:
+    - name: redis_z1

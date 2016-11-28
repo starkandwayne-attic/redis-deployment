@@ -1,0 +1,7 @@
+#!/bin/bash
+
+set -e
+
+echo "Generating credentials for redis admin."
+safe gen 40 "${VAULT_PREFIX}/users/admin" password -- \
+     > /dev/null
