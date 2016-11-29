@@ -5,7 +5,7 @@ meta:
     z2: (( param "What availability zone should the *_z2 vms be placed in?" ))
     z3: (( param "What availability zone should the *_z3 vms be placed in?" ))
 
-  subnets: (( param "Specify subnets for each Az" ))
+  net_ids: (( param "Specify net_id for each Az" ))
   dns: (( param "Specify the DNS for your subnets" ))
   security_groups: (( param "Specify the security groups" ))
 
@@ -111,10 +111,7 @@ compilation:
   workers: 2
 
   cloud_properties:
-    instance_type: c4.large
-    ephemeral_disk:
-      size: 20_480
-      type: gp2
+    instance_type: m1.large
     availability_zone: (( grab meta.azs.z1 ))
 
 # Note: This will migrate to Cloud Config
@@ -122,80 +119,56 @@ resource_pools:
 - name: medium_z1 
   stemcell: (( grab meta.stemcell ))
   cloud_properties:
-    instance_type: t2.medium
-    ephemeral_disk:
-      size: 4096
-      type: gp2
+    instance_type: m1.medium
     availability_zone: (( grab meta.azs.z1 ))
 
 - name: medium_z2 
   stemcell: (( grab meta.stemcell ))
   cloud_properties:
-    instance_type: t2.medium
-    ephemeral_disk:
-      size: 4096
-      type: gp2
+    instance_type: m1.medium
     availability_zone: (( grab meta.azs.z2 ))
 
 - name: medium_z3 
   stemcell: (( grab meta.stemcell ))
   cloud_properties:
-    instance_type: t2.medium
-    ephemeral_disk:
-      size: 4096
-      type: gp2
+    instance_type: m1.medium
     availability_zone: (( grab meta.azs.z3 ))
 
 # Note: This will migrate to Cloud Config
 disk_pools:
 - name: small
   disk_size: 10_240
-  cloud_properties:
-    type: standard
 
 - name: medium
   disk_size: 40_960
-  cloud_properties:
-    type: standard
 
 - name: large
   disk_size: 102_400
-  cloud_properties:
-    type: standard
 
 - name: xlarge
   disk_size: 204_800
-  cloud_properties:
-    type: standard
 
 - name: small_ssd
   disk_size: 10_240
-  cloud_properties:
-    type: gp2
 
 - name: medium_ssd
   disk_size: 40_960
-  cloud_properties:
-    type: gp2
 
 - name: large_ssd
   disk_size: 102_400
-  cloud_properties:
-    type: gp2
 
 - name: xlarge_ssd
   disk_size: 204_800
-  cloud_properties:
-    type: gp2
 
 # This will migrate to Cloud config 
 networks:
 
 - name: redis_z1
+  type: manual
   subnets:
   - cloud_properties:
       security_groups: (( grab meta.security_groups ))
-      subnet: (( grab meta.subnets.z1 ))
+      net_id: (( grab meta.net_ids.z1 ))
     dns: (( grab meta.dns ))
     gateway: (( param "Enter the Gateway for this subnet" )) 
     reserved: (( param "Enter the reserved IP ranges for this subnet" )) 
@@ -203,10 +176,11 @@ networks:
     static: (( param "Enter the static IP ranges for this subnet" )) 
 
 - name: redis_z2
+  type: manual
   subnets:
   - cloud_properties:
       security_groups: (( grab meta.security_groups ))
-      subnet: (( grab meta.subnets.z2 ))
+      net_id: (( grab meta.net_ids.z2 ))
     dns: (( grab meta.dns ))
     gateway: (( param "Enter the Gateway for this subnet" )) 
     reserved: (( param "Enter the reserved IP ranges for this subnet" )) 
@@ -214,10 +188,11 @@ networks:
     static: (( param "Enter the static IP ranges for this subnet" )) 
 
 - name: redis_z3
+  type: manual
   subnets:
   - cloud_properties:
       security_groups: (( grab meta.security_groups ))
-      subnet: (( grab meta.subnets.z3 ))
+      net_id: (( grab meta.net_ids.z3 ))
     dns: (( grab meta.dns ))
     gateway: (( param "Enter the Gateway for this subnet" )) 
     reserved: (( param "Enter the reserved IP ranges for this subnet" )) 
