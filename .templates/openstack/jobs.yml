@@ -9,6 +9,21 @@ meta:
   dns: (( param "Specify the DNS for your subnets" ))
   security_groups: (( param "Specify the security groups" ))
 
+  route_registrar:
+    routes:
+    - name: cf-redis-broker
+      health_check:
+        name: cf-redis-broker
+        script_path: /var/vcap/jobs/cf-redis-broker/bin/health_check.sh
+      port: 12350
+      registration_interval: 10s
+      tags:
+        component: redis-broker
+        env: (( grab name ))
+      uris:
+        #- (( concat properties.redis.broker.subdomain "." properties.cf.system_domain ":12350"))
+        - (( concat jobs.broker.networks.redis_z1.static_ips[0] ":12350" ))
+
   management:
     shield:
       agent:
@@ -27,65 +42,25 @@ meta:
 
   cell_ips: (( grab jobs.cell_z1.networks.redis_z1.static_ips jobs.cell_z2.networks.redis_z2.static_ips jobs.cell_z3.networks.redis_z3.static_ips )) 
 
-  route_registrar:
-    routes:
-      - name: cf-redis-broker
-        health_check:
-          name: cf-redis-broker
-          script_path: /var/vcap/jobs/cf-redis-broker/bin/health_check.sh
-        port: 80
-        registration_interval: 10s
-        tags:
-          component: redis-broker
-          env: (( param "Specify the Environment" )) 
-        uris: (( grab jobs.broker.networks.redis_z1.static_ips )) 
-
-  nats:
-    machines: (( param "List the nats machines" ))
-    port: (( param "Which port the nats are listening on?" ))
-    user: (( param "What is the user name for nats?" )) 
-    password: (( param "What is the password for nats user?" )) 
-
-  cf:
-    api_url: (( param "Specify the cf api url" )) 
-    apps_domain: (( param "Specify apps' domain in your CF" )) 
-    system_domain: (( param "Specify system domain in your CF" ))  
-    admin_username: (( param "What is the admin user name for your CF?" )) 
-    admin_password: (( param "What is your admin password for your CF?" )) 
-
-  templates:
-  - { name: dedicated-node, release: cf-redis }
-  - { name: syslog-configurator, release: cf-redis }
-  - { name: toolbelt, release: toolbelt}
-  - { name: toolbelt-quick, release: toolbelt }
-  - { name: dbolo, release: bolo }
-  - { name: shield-agent, release: shield }
-
 properties:
   cf:
     .: (( inject meta.cf ))
 
-  broker:
-    host: (( grab jobs.broker.networks.redis_z1.static_ips[0] )) # cf-redis-broker.service.cf.internal
-    name: cf-redis-broker
-    username: (( vault meta.vault_prefix "/servicebroker:username" ))
-    password: (( vault meta.vault_prefix "/servicebroker:password" ))
-    protocol: http
-
   redis:
     agent:
       backend_port: 54321
-    bg_save_command: somerandomstring 
+    bg_save_command: somenotsorandomstring
 
     broker:
       auth:
         username: (( vault meta.vault_prefix "/servicebroker:username" ))
         password: (( vault meta.vault_prefix "/servicebroker:password" ))
+      subdomain: cf-redis-broker
       backend_host: (( grab jobs.broker.networks.redis_z1.static_ips[0] ))
       backend_port: 12345
       dedicated_nodes: (( grab meta.cell_ips ))
       enable_service_access: true
-      host: (( grab jobs.broker.networks.redis_z1.static_ips[0] )) 
+      host: (( grab jobs.broker.networks.redis_z1.static_ips[0] ))
       name: cf-redis-broker
       network: redis_z1
       route_name: cf-redis-broker
@@ -94,11 +69,21 @@ properties:
       shared_vm_plan_id: (( param "Specify shared vm plan id" )) 
       dedicated_vm_plan_id: (( param "Specify dedicated vm plan id" )) 
       service_instance_limit: 100
-      subdomain: cf-redis-broker
+      nginx:
+        port: 12350
 
     config_command: configalias
     maxmemory: 3mb
     save_command: somerandomstring 
+
+  broker:
+    # host: (( concat jobs.broker.networks.redis_z1.static_ips[0] ":12350" ))
+    name: cf-redis-broker
+    #host: (( concat properties.redis.broker.subdomain "." properties.cf.system_domain ":12350"))
+    host: (( concat jobs.broker.networks.redis_z1.static_ips[0] ":12350" ))
+    username: (( vault meta.vault_prefix "/servicebroker:username" ))
+    password: (( vault meta.vault_prefix "/servicebroker:password" ))
+    protocol: http
 
   syslog_aggregator:
     address: (( grab meta.management.nxlog.tcpoutput.host ))
@@ -108,7 +93,7 @@ properties:
 compilation:
   network: redis_z1
   reuse_compilation_vms: true
-  workers: 2
+  workers: 4
 
   cloud_properties:
     instance_type: m1.large
@@ -208,10 +193,9 @@ jobs:
     static_ips: (( static_ips(0) ))
   properties:
     .: (( inject meta.management ))
+    route_registrar: (( grab meta.route_registrar ))
     nats:
-      nats: (( inject meta.nats ))
-    route_registrar: 
-      .: (( inject meta.route_registrar ))
+      .: (( inject meta.nats ))
 
 - name: cell_z1
   instances: 1
@@ -220,7 +204,7 @@ jobs:
   networks:
     - name: redis_z1
       static_ips: (( static_ips(1,2,3,4,5,6,7,8) )) # 0 is for the broker
-  templates: (( grab meta.templates ))
+  templates: (( grab meta.cell.templates ))
   properties:
     .: (( inject meta.management ))
 
@@ -231,7 +215,7 @@ jobs:
   networks:
     - name: redis_z2
       static_ips: (( static_ips(0,1,2,3,4,5,6,7,8) ))
-  templates: (( grab meta.templates ))
+  templates: (( grab meta.cell.templates ))
   properties:
     .: (( inject meta.management ))
 
@@ -242,7 +226,7 @@ jobs:
   networks:
     - name: redis_z3
       static_ips: (( static_ips(0,1,2,3,4,5,6,7,8) ))
-  templates: (( grab meta.templates ))
+  templates: (( grab meta.cell.templates ))
   properties:
     .: (( inject meta.management ))
 

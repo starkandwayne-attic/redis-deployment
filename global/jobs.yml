@@ -14,9 +14,33 @@ networks: (( param "Specify the networks for your deployment" ))
 update:
   canaries: 1
   max_in_flight: 1
-  canary_watch_time: 1000-60000
-  update_watch_time: 1000-60000
+  canary_watch_time: 1000-120000
+  update_watch_time: 1000-120000
   serial: true
+
+meta:
+  cf:
+    api_url: (( param "Specify the cf api url" )) 
+    apps_domain: (( param "Specify apps' domain in your CF" )) 
+    system_domain: (( param "Specify system domain in your CF" ))  
+    admin_username: (( param "What is the admin user name for your CF?" )) 
+    admin_password: (( param "What is your admin password for your CF?" )) 
+
+  nats:
+    machines: (( param "List the nats machines" ))
+    port: (( param "Which port the nats are listening on?" ))
+    user: (( param "What is the user name for nats?" )) 
+    password: (( param "What is the password for nats user?" )) 
+
+
+  cell:
+    templates:
+    - { name: dedicated-node, release: cf-redis }
+    - { name: syslog-configurator, release: cf-redis }
+    - { name: toolbelt, release: toolbelt}
+    - { name: toolbelt-quick, release: toolbelt }
+    - { name: dbolo, release: bolo }
+    - { name: shield-agent, release: shield }
 
 jobs:
 - name: broker
@@ -31,7 +55,7 @@ jobs:
   - { name: toolbelt-quick, release: toolbelt }
   - { name: nxlog, release: nxlog }
   - { name: dbolo, release: bolo }
-    
+
 - name: broker-deregistrar
   instances: 1
   lifecycle: errand 
