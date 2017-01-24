@@ -5,3 +5,9 @@ set -e
 echo "Generating credentials for redis admin."
 safe gen 40 "${VAULT_PREFIX}/users/admin" password -- \
      > /dev/null
+
+echo "Generating credentials for redis service broker"
+safe gen 60 "${VAULT_PREFIX}/servicebroker" password -- \
+     > /dev/null
+
+safe write "${VAULT_PREFIX}/servicebroker" username=servicebroker
