@@ -39,8 +39,6 @@ meta:
     - { name: syslog-configurator, release: cf-redis }
     - { name: toolbelt, release: toolbelt}
     - { name: toolbelt-quick, release: toolbelt }
-    - { name: dbolo, release: bolo }
-    - { name: shield-agent, release: shield }
 
 jobs:
 - name: broker
@@ -53,12 +51,10 @@ jobs:
   - { name: route_registrar, release: routing }
   - { name: toolbelt, release: toolbelt}
   - { name: toolbelt-quick, release: toolbelt }
-  - { name: nxlog, release: nxlog }
-  - { name: dbolo, release: bolo }
 
 - name: broker-deregistrar
   instances: 1
-  lifecycle: errand 
+  lifecycle: errand
   networks: (( param "Environment must define jobs.broker-deregistrar.networks" ))
   resource_pool: (( param "Define the broker-deregistrar resource pool" ))
   templates:
@@ -68,7 +64,7 @@ jobs:
 
 - name: broker-registrar
   instances: 1
-  lifecycle: errand 
+  lifecycle: errand
   networks: (( param "Environment must define jobs.broker-registrar.networks" ))
   resource_pool: (( param "Define the broker-registrar resource pool" ))
   templates:

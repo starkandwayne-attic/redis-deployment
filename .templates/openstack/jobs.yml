@@ -21,8 +21,10 @@ meta:
         component: redis-broker
         env: (( grab name ))
       uris:
-        #- (( concat properties.redis.broker.subdomain "." properties.cf.system_domain ":12350"))
         - (( concat jobs.broker.networks.redis_z1.static_ips[0] ":12350" ))
+  cell:
+    templates:
+    - { name: shield-agent, release: shield }
 
   management:
     shield:
@@ -30,15 +32,6 @@ meta:
         autoprovision: (( param "What is the shield autoprovision url?" )) 
       daemon:
         domain: (( param "What is the shield daemon domain?" )) 
-    nxlog:
-      tcpoutput:
-        host: (( param "What is the host?" )) 
-        port: (( param "What is the nxlog?" ))
-        protocol: tcp
-    bolo:
-      submission:
-        address: (( param "What is the address for monitoring submission?" ))
-      collectors: (( param "What is the collectors setting?" ))
 
   cell_ips: (( grab jobs.cell_z1.networks.redis_z1.static_ips jobs.cell_z2.networks.redis_z2.static_ips jobs.cell_z3.networks.redis_z3.static_ips )) 
 
@@ -50,7 +43,8 @@ properties:
     agent:
       backend_port: 54321
     bg_save_command: somenotsorandomstring
-
+    shared_plan:
+      instance_limit: 15
     broker:
       auth:
         username: (( vault meta.vault_prefix "/servicebroker:username" ))
@@ -77,18 +71,11 @@ properties:
     save_command: somerandomstring 
 
   broker:
-    # host: (( concat jobs.broker.networks.redis_z1.static_ips[0] ":12350" ))
     name: cf-redis-broker
-    #host: (( concat properties.redis.broker.subdomain "." properties.cf.system_domain ":12350"))
     host: (( concat jobs.broker.networks.redis_z1.static_ips[0] ":12350" ))
     username: (( vault meta.vault_prefix "/servicebroker:username" ))
     password: (( vault meta.vault_prefix "/servicebroker:password" ))
     protocol: http
-
-  syslog_aggregator:
-    address: (( grab meta.management.nxlog.tcpoutput.host ))
-    port: (( grab meta.management.nxlog.tcpoutput.port ))
-    transport: (( grab meta.management.nxlog.tcpoutput.protocol ))
 
 compilation:
   network: redis_z1

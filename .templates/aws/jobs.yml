@@ -15,15 +15,6 @@ meta:
         autoprovision: (( param "What is the shield autoprovision url?" )) 
       daemon:
         domain: (( param "What is the shield daemon domain?" )) 
-    nxlog:
-      tcpoutput:
-        host: (( param "What is the host?" )) 
-        port: (( param "What is the nxlog?" ))
-        protocol: tcp
-    bolo:
-      submission:
-        address: (( param "What is the address for monitoring submission?" ))
-      collectors: (( param "What is the collectors setting?" ))
 
   cell_ips: (( grab jobs.cell_z1.networks.redis_z1.static_ips jobs.cell_z2.networks.redis_z2.static_ips jobs.cell_z3.networks.redis_z3.static_ips )) 
 
@@ -58,7 +49,6 @@ meta:
   - { name: syslog-configurator, release: cf-redis }
   - { name: toolbelt, release: toolbelt}
   - { name: toolbelt-quick, release: toolbelt }
-  - { name: dbolo, release: bolo }
   - { name: shield-agent, release: shield }
 
 properties:
@@ -99,11 +89,6 @@ properties:
     config_command: configalias
     maxmemory: 3mb
     save_command: somerandomstring 
-
-  syslog_aggregator:
-    address: (( grab meta.management.nxlog.tcpoutput.host ))
-    port: (( grab meta.management.nxlog.tcpoutput.port ))
-    transport: (( grab meta.management.nxlog.tcpoutput.protocol ))
 
 compilation:
   network: redis_z1
